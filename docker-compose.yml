@@ -1,0 +1,77 @@
+version: '3'
+services:
+
+  reviewdb:
+    container_name: reviewdb
+    hostname: reviewdb
+    image: mysql:5.7
+    environment:
+      MYSQL_DATABASE: review_service
+      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: password
+    ports:
+      - '3307:3306'
+    volumes:
+      - ./review_vol:/var/lib/mysql
+
+  reviewweb:
+    container_name: review-service
+    image: review-service
+    ports:
+      - '9090:8011'
+    environment:
+      ZIPKIN_HOST: zipkin
+      ZIPKIN_PORT: 9411
+    depends_on:
+      - eureka
+      - reviewdb
+    restart: always
+
+  productweb:
+    container_name: product-service
+    image: prod-svc
+    ports:
+      - '8080:8087'
+    environment:
+      ZIPKIN_HOST: zipkin
+      ZIPKIN_PORT: 9411
+    depends_on:
+      - eureka
+      - reviewweb
+    restart: always
+
+  eureka:
+    container_name: eureka
+    hostname: eureka
+    image: eureka-server
+    ports:
+      - '8761:8761'
+    restart: always
+
+  api-gateway:
+    container_name: api-gateway
+    image: api-gateway
+    ports:
+      - '8032:8080'
+    environment:
+      ZIPKIN_HOST: zipkin
+      ZIPKIN_PORT: 9411
+      EUREKA_HOST: eureka
+      EUREKA_PORT: 8761
+    depends_on:
+      - reviewweb
+      - productweb
+      - eureka
+    restart: always
+
+  zipkin-server:
+    container_name: zipkin
+    hostname: zipkin
+    image: zipkin-server
+    ports:
+      - '9411:9411'
+    depends_on:
+      - reviewweb
+      - productweb
+      - eureka
+    restart: always
